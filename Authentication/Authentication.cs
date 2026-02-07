@@ -36,11 +36,17 @@ namespace [Application Name].UserAuthentication
                     var onTokenValidated = options.Events.OnValidatePrincipal;
                     options.Events.OnValidatePrincipal = async context =>
                     {
-                        if (context.Principal!=null)
-                        if (BearerToken.Token(context.Principal) != string.Empty)
+                        if (context.Principal != null)
                         {
-                            await onTokenValidated(context);
-                            if (BearerToken.Expired(context.Principal)) SignOut(context.HttpContext);
+                            string token = BearerToken.Token(context.Principal);
+                            if (token != string.Empty)
+                            {
+                                await onTokenValidated(context);
+                                if (BearerToken.Expired(token))
+                                {
+                                    SignOut(context.HttpContext);
+                                }
+                            }
                         }
                     };
                 }
