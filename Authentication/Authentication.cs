@@ -1,6 +1,5 @@
 ﻿using Microsoft.AspNetCore.Authentication;
 using System.Security.Claims;
-
 namespace [Application Name].UserAuthentication
 {
     public class Authentication
