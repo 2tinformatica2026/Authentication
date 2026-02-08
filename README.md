@@ -116,8 +116,19 @@ string token = BearerToken.Token(claims, HttpContext, "", "", 60, "123456aA90123
 
 The token is returned to the requesting service which generates and assigns the session cookie to the user's browser:
 
- UserAuthentication.Authentication.SignIn(token, HttpContext, false);
+UserAuthentication.Authentication.SignIn(token, HttpContext, false);
 
+Example of generating session cookie without bearer token.
+
+int userid = 1;
+
+List<Claim> claims = new List<Claim>();
+
+claims.Add(new Claim("admin", "customers"));
+
+claims.Add(new Claim("admin", "suppliers"));
+
+UserAuthentication.Authentication.SignIn(claims,HttpContext,false,1);
 
 
 
