@@ -98,3 +98,32 @@ Finally, the Expired Boolean property compares the Token's end-of-validity date 
 
 The final LocalToken class provides an interface for serializing and deserializing claims associated with a user in the case of local authentication architectures.
 
+Example of creating a session cookie obtained from the bearer token.
+
+Context:
+
+An authentication service finds a user's credentials and generates a bearer token:
+
+int userid = 1;
+
+List<Claim> claims = new List<Claim>();
+
+claims.Add(new Claim("admin", "customers"));
+
+claims.Add(new Claim("admin", "suppliers"));
+                        
+string token = BearerToken.Token(claims, HttpContext, "", "", 60, "123456aA9012345678901234567890ab", userid);
+
+The token is returned to the requesting service which generates and assigns the session cookie to the user's browser:
+
+ UserAuthentication.Authentication.SignIn(token, HttpContext, false);
+
+
+
+
+
+
+
+
+
+
