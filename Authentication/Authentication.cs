@@ -1,17 +1,18 @@
 ﻿using Microsoft.AspNetCore.Authentication;
 using System.Security.Claims;
+
 namespace [Application Name].UserAuthentication
 {
-    public class Authentication
+    public class Authentication: abstractAuthentication
     {
         private const string CookieTypeName = "UserSession";
-        public static string userid { get { return "userid";} }
-        public static string hostip { get { return "hostip"; } } 
+
         //LoginPath: redirect if action is colored with [Authorize] and user not authenticated
         //LogoutPath: redirect url on SignOutAsync invocation
         //AccessDeniedPath: redirect if action is colored with [AuthorizePolicy] and user does not have the necessary policy
         public static void AddAuthentication(WebApplicationBuilder builder,
                                              int ExpireMinutesUserSessionTimeSpan,
+                                             bool SlidingExpiration,
                                              string? LoginPath = null,
                                              string? LogoutPath = null,
                                              string? AccessDeniedPath = null,
@@ -23,7 +24,7 @@ namespace [Application Name].UserAuthentication
                 options.Cookie.HttpOnly = true;
                 options.ExpireTimeSpan = TimeSpan.FromMinutes(ExpireMinutesUserSessionTimeSpan);
                 options.Cookie.MaxAge = options.ExpireTimeSpan;
-                options.SlidingExpiration = true; //the expiration date of the cookie is updated automatically
+                options.SlidingExpiration = SlidingExpiration; //the expiration date of the cookie is updated automatically
                 options.Cookie.SecurePolicy = CookieSecurePolicy.Always; // https only
                 options.Cookie.IsEssential = true;
                 if (!String.IsNullOrEmpty(LoginPath)) options.LoginPath = new PathString(LoginPath);
@@ -58,10 +59,10 @@ namespace [Application Name].UserAuthentication
         public static void SignIn(List<Claim> claims, HttpContext context, bool rememberme, int UserId)
         {
             claims.Add(new Claim(userid, UserId.ToString()));
-            if (context.Connection.RemoteIpAddress!=null) claims.Add(new Claim(hostip, context.Connection.RemoteIpAddress.ToString()));
+            claims.Add(new Claim(hostip, context.Connection.RemoteIpAddress==null? "": context.Connection.RemoteIpAddress.ToString()));
             SignIn(claims, context, rememberme);
         }
-        public static async void SignIn(List<Claim> claims, HttpContext context, bool rememberme)
+        private static async void SignIn(List<Claim> claims, HttpContext context, bool rememberme)
         {
             var identity = new ClaimsIdentity(claims, CookieTypeName);
             ClaimsPrincipal claimsPrincipal = new ClaimsPrincipal(identity);
@@ -72,32 +73,6 @@ namespace [Application Name].UserAuthentication
         public static async void SignOut(HttpContext context)
         {
             await context.SignOutAsync(CookieTypeName);
-        }
-        public static bool IsAuthenticated(ClaimsPrincipal User)
-        {
-            if (User?.Identity != null)
-            {
-                return User.Identity.IsAuthenticated;
-            }
-            else return false;
-        }
-        public static int? UserId(ClaimsPrincipal User)
-        {
-            if (User.Identity != null)
-            {
-                var result = User.Claims.FirstOrDefault(C => C.Type == userid);
-                if (result != null) { return Convert.ToInt32(result.Value); } else { return null; }
-            }
-            else return null;
-        }
-        public static string? HostIp(ClaimsPrincipal User)
-        {
-            if (User.Identity != null)
-            {
-                var result = User.Claims.FirstOrDefault(C => C.Type == hostip);
-                return result != null ? result.Value : null;
-            }
-            else return null;
         }
     }
 }

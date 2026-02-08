@@ -1,5 +1,6 @@
 ﻿using Newtonsoft.Json;
 using System.Security.Claims;
+
 namespace [Application Name].UserAuthentication
 {
     public class LocalToken

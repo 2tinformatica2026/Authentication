@@ -3,11 +3,12 @@ using Microsoft.IdentityModel.Tokens;
 using System.IdentityModel.Tokens.Jwt;
 using System.Security.Claims;
 using System.Text;
+
 namespace [Application Name].UserAuthentication
 {
-    public class BearerToken
+    public class BearerToken: abstractAuthentication
     {
-        public static string ClaimName { get { return JwtBearerDefaults.AuthenticationScheme;} }
+        private static string AuthenticationScheme { get { return JwtBearerDefaults.AuthenticationScheme;} }
         public static string ClaimValue(JwtSecurityToken token, string ClaimType)
         {
             if (token.Claims.Any(x => x.Type == ClaimType))
@@ -17,8 +18,12 @@ namespace [Application Name].UserAuthentication
         }
         public static List<Claim> Claims(JwtSecurityToken token, bool includeToken = true)
         {
-            var result = token.Claims.ToList();
-            if (includeToken) result.Add(new Claim(ClaimName, ClaimName + " " + token.RawData));
+            var result = token.Claims.Where(x=>x.Type!= "exp")
+                .Where(x => x.Type != "nbf")
+                .Where(x => x.Type != "iat")
+                .Where(x => x.Type != "iss")
+                .Where(x => x.Type != "aud").ToList();
+            if (includeToken) result.Add(new Claim(AuthenticationScheme, AuthenticationScheme + " " + token.RawData));
             return result;
         }
         public static List<Claim> Claims(string token, bool includeToken = true)
@@ -27,18 +32,22 @@ namespace [Application Name].UserAuthentication
         }
         public static bool TokenExist(ClaimsPrincipal User)
         {
-            return (User.Claims.Any(X => X.Type == ClaimName));
+            return (User.Claims.Any(X => X.Type == AuthenticationScheme));
         }
-        public static string Token(List<Claim> Claims, 
+        public static string Token(List<Claim> Claims,
+                                   HttpContext context,
                                    string Issuer, 
                                    string Audience, 
                                    int? ExpiresMinutes,
-                                   string _32Keybyte)
+                                   string _32Keybyte,
+                                   int UserId)
         {
             var keyBytes = Encoding.UTF8.GetBytes(_32Keybyte);
             var tokenHandler = new JwtSecurityTokenHandler();
             ClaimsIdentity claims = new ClaimsIdentity();
-            foreach (var claim in Claims) { claims.AddClaim(claim); }
+            claims.AddClaims(Claims);
+            claims.AddClaim(new Claim(userid, UserId.ToString()));
+            claims.AddClaim(new Claim(hostip, context.Connection.RemoteIpAddress == null ? "" : context.Connection.RemoteIpAddress.ToString()));
             var tokenDescriptor = new SecurityTokenDescriptor
             {
                 Issuer = Issuer == "" ? null: Issuer,
@@ -55,7 +64,7 @@ namespace [Application Name].UserAuthentication
         public static string Token(ClaimsPrincipal User)
         {
             if (TokenExist(User))
-            return User.Claims.First(X=> X.Type == ClaimName).Value;
+            return User.Claims.First(X=> X.Type == AuthenticationScheme).Value;
             return string.Empty;
         }
         public static JwtSecurityToken Token(string StringToken)
