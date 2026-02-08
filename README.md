@@ -51,7 +51,7 @@ app.Run();
 
 Model description
 
-The infrastructure is based on the three classes "Authentication.cs", "BearerToken.cs" and "LocalToken.cs".
+The infrastructure is based on the four classes "abstractAuthentication.cs", "Authentication.cs", "BearerToken.cs" and "LocalToken.cs".
 
 The main one, Authentication.cs, exposes convenient static methods for configuring the authentication service and login and logout processes.
 
@@ -67,10 +67,22 @@ The authentication process uses the SignIn overloaded method which requires a li
 
 The BearerToken class provides the following methods:
 
-- public static string ClaimName { get { return JwtBearerDefaults.AuthenticationScheme;} }
+- public static string ClaimValue(JwtSecurityToken token, string ClaimType)
+- public static List<Claim> Claims(JwtSecurityToken token, bool includeToken = true)
+- public static List<Claim> Claims(string token, bool includeToken = true)
 - public static bool TokenExist(ClaimsPrincipal User)
+- public static string Token(List<Claim> Claims,
+                           HttpContext context,
+                           string Issuer, 
+                           string Audience, 
+                           int? ExpiresMinutes,
+                           string _32Keybyte,
+                           int UserId)
 - public static string Token(ClaimsPrincipal User)
-- public static bool Expired(ClaimsPrincipal User)
+- public static JwtSecurityToken Token(string StringToken)
+- public static JwtSecurityToken Token(HttpRequest Request)
+- public static bool Expired(string token)
+- public static bool Expired(JwtSecurityToken token)  
 
 The class simplifies the handling of a Bearer-type token released by an authentication microservice.
 
@@ -78,7 +90,7 @@ The Claims property returns the list of claims registered in the token payload s
 
 This solution is much more convenient and secure and allows, among other things, to link the lifecycle of the authentication cookie to that of the Token and the opposite.
 
-The TokenExist property checks for the existence of a claim with the value key “ClaimName”.
+The TokenExist property checks for the existence of a claim with the value key “AuthenticationScheme”.
 
 The Token string property returns the string stored in the Token claim value, i.e., the Token as received by the authentication micro service.
 
