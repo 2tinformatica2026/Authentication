@@ -8,7 +8,44 @@ namespace [Application Name].UserAuthentication
 {
     public class BearerToken: abstractAuthentication
     {
-        private static string AuthenticationScheme { get { return JwtBearerDefaults.AuthenticationScheme;} }
+        private const string JwtConfig_Key256 = "JwtConfig:Key256";
+        private const string JwtConfig_ExpiresMinutes = "JwtConfig:ExpiresMinutes";
+        private const string JwtConfig_Issuer = "JwtConfig:Issuer";
+        private const string JwtConfig_Audience = "JwtConfig:Audience";
+        /// <summary>
+        /// add and configure the Jwt Bearer authentication service
+        /// </summary>
+        /// <param name="builder"></param>
+        public static void AddAuthentication(WebApplicationBuilder builder)
+        {
+            builder.Services.AddAuthentication(options =>
+            {
+                options.DefaultAuthenticateScheme = JwtBearerDefaults.AuthenticationScheme;
+                options.DefaultChallengeScheme = JwtBearerDefaults.AuthenticationScheme;
+            }).AddJwtBearer(jwtOption =>
+            {
+                string? key = builder.Configuration.GetValue<string>(JwtConfig_Key256);
+                var keyBytes = Encoding.ASCII.GetBytes(key != null ? key : "");
+                string? Issuer = builder.Configuration.GetValue<string>(JwtConfig_Issuer);
+                string? Audience = builder.Configuration.GetValue<string>(JwtConfig_Audience);
+
+                jwtOption.SaveToken = true;
+                var securityKey = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(key != null ? key : ""));
+                var algorithm = SecurityAlgorithms.HmacSha256;
+                var signingCredentials = new SigningCredentials(securityKey, algorithm);
+                jwtOption.TokenValidationParameters = new TokenValidationParameters
+                {
+                    ValidateIssuerSigningKey = true,
+                    IssuerSigningKey = signingCredentials.Key,
+                    ValidateLifetime = true,
+                    ValidIssuer = Issuer,
+                    ValidAudience = Audience,
+                    ValidateIssuer = !string.IsNullOrEmpty(Issuer),
+                    ValidateAudience = !string.IsNullOrEmpty(Audience),
+                    ClockSkew = TimeSpan.Zero,
+                };
+            });
+        }
         public static string ClaimValue(JwtSecurityToken token, string ClaimType)
         {
             if (token.Claims.Any(x => x.Type == ClaimType))
@@ -16,33 +53,61 @@ namespace [Application Name].UserAuthentication
                return token.Claims.First(x=>x.Type == ClaimType).Value;
             } else return string.Empty;
         }
-        public static List<Claim> Claims(JwtSecurityToken token, bool includeToken = true)
+        public static List<Claim> Claims(JwtSecurityToken token, bool TokenIncluded = true)
         {
             var result = token.Claims.Where(x=>x.Type!= "exp")
                 .Where(x => x.Type != "nbf")
                 .Where(x => x.Type != "iat")
                 .Where(x => x.Type != "iss")
                 .Where(x => x.Type != "aud").ToList();
-            if (includeToken) result.Add(new Claim(AuthenticationScheme, AuthenticationScheme + " " + token.RawData));
+            if (TokenIncluded) result.Add(new Claim(JwtBearerDefaults.AuthenticationScheme, JwtBearerDefaults.AuthenticationScheme + " " + token.RawData));
             return result;
         }
-        public static List<Claim> Claims(string token, bool includeToken = true)
+        public static List<Claim> Claims(string token, bool TokenIncluded = true)
         {
-            return Claims(Token(token),includeToken);
+            return Claims(Token(token),TokenIncluded);
         }
         public static bool TokenExist(ClaimsPrincipal User)
         {
-            return (User.Claims.Any(X => X.Type == AuthenticationScheme));
+            return (User.Claims.Any(X => X.Type == JwtBearerDefaults.AuthenticationScheme));
         }
+        /// <summary>
+        /// generates the token by retrieving its parameters from the appsettings.json configuration file
+        /// List<Claim> Claims - claims attributed to the user
+        /// int UserId - user identification id
+        /// </summary>
+        public static string Token(List<Claim> Claims, HttpContext context,int UserId)
+        {
+            var builder = WebApplication.CreateBuilder();
+            var Issuer = builder.Configuration.GetValue<string>(JwtConfig_Issuer);
+            var Audience = builder.Configuration.GetValue<string>(JwtConfig_Audience);
+            var ExpiresMinutes = builder.Configuration.GetValue<string>(JwtConfig_ExpiresMinutes);
+            var _32Keybyte = builder.Configuration.GetValue<string>(JwtConfig_Key256);
+            return Token(Claims, 
+                         context, 
+                         Issuer==null?"":Issuer, 
+                         Audience==null?"":Audience, 
+                         ExpiresMinutes==null?null:int.Parse(ExpiresMinutes), 
+                         _32Keybyte==null?"": _32Keybyte, 
+                         UserId);
+        }
+        /// <summary>
+        /// generates a token using the following parameters
+        /// List<Claim> Claims - claims attributed to the user
+        /// string Issuer, string Audience to validate the token across multiple service platforms
+        /// int? ExpiresMinutes - validity in minutes of the token starting from the miment of its generation
+        /// string Key256 - 32-character sequence for generating the symmetric security key
+        /// int UserId - user identification id
+        /// </summary>
         public static string Token(List<Claim> Claims,
                                    HttpContext context,
                                    string Issuer, 
                                    string Audience, 
                                    int? ExpiresMinutes,
-                                   string _32Keybyte,
+                                   string Key256,
                                    int UserId)
         {
-            var keyBytes = Encoding.UTF8.GetBytes(_32Keybyte);
+            var keyBytes = Encoding.UTF8.GetBytes(Key256);
             var tokenHandler = new JwtSecurityTokenHandler();
             ClaimsIdentity claims = new ClaimsIdentity();
             claims.AddClaims(Claims);
@@ -64,7 +129,7 @@ namespace [Application Name].UserAuthentication
         public static string Token(ClaimsPrincipal User)
         {
             if (TokenExist(User))
-            return User.Claims.First(X=> X.Type == AuthenticationScheme).Value;
+            return User.Claims.First(X=> X.Type == JwtBearerDefaults.AuthenticationScheme).Value;
             return string.Empty;
         }
         public static JwtSecurityToken Token(string StringToken)

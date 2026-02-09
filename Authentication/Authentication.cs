@@ -6,17 +6,39 @@ namespace [Application Name].UserAuthentication
     public class Authentication: abstractAuthentication
     {
         private const string CookieTypeName = "UserSession";
+        private const string AuthConfig_ExpireMinutesUserSessionTimeSpan = "Authentication:ExpireMinutesUserSessionTimeSpan";
+        private const string AuthConfig_SlidingExpiration = "Authentication:SlidingExpiration";
+        private const string AuthConfig_CheckBearerTokenExpiration = "Authentication:CheckBearerTokenExpiration";
+        private const string AuthConfig_LoginPath = "Authentication:LoginPath";
+        private const string AuthConfig_LogoutPath = "Authentication:LogoutPath";
+        private const string AuthConfig_AccessDeniedPath = "Authentication:AccessDeniedPath";
 
         //LoginPath: redirect if action is colored with [Authorize] and user not authenticated
         //LogoutPath: redirect url on SignOutAsync invocation
         //AccessDeniedPath: redirect if action is colored with [AuthorizePolicy] and user does not have the necessary policy
+        public static void AddAuthentication(WebApplicationBuilder builder)
+        {
+            var ExpireMinutesUserSessionTimeSpan = builder.Configuration.GetValue<int>(AuthConfig_ExpireMinutesUserSessionTimeSpan);
+            var SlidingExpiration = builder.Configuration.GetValue<bool>(AuthConfig_SlidingExpiration);
+            var CheckBearerTokenExpiration = builder.Configuration.GetValue<bool>(AuthConfig_CheckBearerTokenExpiration);
+            var LoginPath = builder.Configuration.GetValue<string>(AuthConfig_LoginPath);
+            var LogoutPath = builder.Configuration.GetValue<string>(AuthConfig_LogoutPath);
+            var AccessDeniedPath = builder.Configuration.GetValue<string>(AuthConfig_AccessDeniedPath);
+            AddAuthentication(builder, 
+                              ExpireMinutesUserSessionTimeSpan, 
+                              SlidingExpiration, 
+                              CheckBearerTokenExpiration, 
+                              LoginPath, 
+                              LogoutPath, 
+                              AccessDeniedPath);
+        }
         public static void AddAuthentication(WebApplicationBuilder builder,
                                              int ExpireMinutesUserSessionTimeSpan,
                                              bool SlidingExpiration,
+                                             bool CheckBearerTokenExpiration = true,
                                              string? LoginPath = null,
                                              string? LogoutPath = null,
-                                             string? AccessDeniedPath = null,
-                                             bool CheckBearerTokenExpiration = true)
+                                             string? AccessDeniedPath = null)
         {
             builder.Services.AddAuthentication(CookieTypeName).AddCookie(CookieTypeName, options =>
             {
