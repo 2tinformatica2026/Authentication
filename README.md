@@ -4,23 +4,19 @@ Copy the “Authentication” folder of our infrastructure to the main root of t
 
 using [Project name].UserAuthentication;
 
-using [Project name].UserLocalization;
-
 var builder = WebApplication.CreateBuilder(args);
-
-Localization Culture = new Localization();
-
-Culture.AddLocalization(builder, "Resources", Localization.LocationExpanderFormat.MvcViewSuffix);
 
 // Add services to the container.
 
 builder.Services.AddControllersWithViews();
 
-Authentication.AddAuthentication(builder,30, "/Authentication/Login", "/Home/Index", "/Home/Index");
+//cookie based
+Authentication.AddAuthentication(builder);
+
+/jwt bearer based 
+BearerToken.AddAuthentication(builder);
 
 var app = builder.Build();
-
-Culture.UseRequestLocalization(app);
 
 // Configure the HTTP request pipeline.
 
@@ -67,17 +63,19 @@ The authentication process uses the SignIn overloaded method which requires a li
 
 The BearerToken class provides the following methods:
 
+- public static void AddAuthentication(WebApplicationBuilder builder)
 - public static string ClaimValue(JwtSecurityToken token, string ClaimType)
 - public static List<Claim> Claims(JwtSecurityToken token, bool includeToken = true)
 - public static List<Claim> Claims(string token, bool includeToken = true)
 - public static bool TokenExist(ClaimsPrincipal User)
+- public static string Token(List<Claim> Claims, HttpContext context,int UserId)
 - public static string Token(List<Claim> Claims,
-                           HttpContext context,
-                           string Issuer, 
-                           string Audience, 
-                           int? ExpiresMinutes,
-                           string _32Keybyte,
-                           int UserId)
+                             HttpContext context,
+                             string Issuer, 
+                             string Audience, 
+                             int? ExpiresMinutes,
+                             string Key256,
+                             int UserId)
 - public static string Token(ClaimsPrincipal User)
 - public static JwtSecurityToken Token(string StringToken)
 - public static JwtSecurityToken Token(HttpRequest Request)
@@ -85,6 +83,8 @@ The BearerToken class provides the following methods:
 - public static bool Expired(JwtSecurityToken token)  
 
 The class simplifies the handling of a Bearer-type token released by an authentication microservice.
+
+AddAuthentication method configure and register the bearer token-based authentication service.
 
 The Claims property returns the list of claims registered in the token payload section by adding a new one with the original token.
 
@@ -112,7 +112,7 @@ claims.Add(new Claim("admin", "customers"));
 
 claims.Add(new Claim("admin", "suppliers"));
                         
-string token = BearerToken.Token(claims, HttpContext, "", "", 60, "123456aA9012345678901234567890ab", userid);
+string token = BearerToken.Token(claims, HttpContext, userid);
 
 The token is returned to the requesting service which generates and assigns the session cookie to the user's browser:
 
